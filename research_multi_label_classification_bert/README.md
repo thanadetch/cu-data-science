@@ -64,8 +64,8 @@ For each "id" in the test set, you must predict a one hot vector for the TARGET 
 
 ### Files
 
-- `train.json` - the training set
-- `test.json` - the test set
+- `train_for_student.json` - the training set
+- `test_for_student.json` - the test set
 
 ### Data Structure
 
