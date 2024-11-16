@@ -111,7 +111,7 @@ inertias = perform_elbow_analysis(X_scaled, clusters)
 
 fig_elbow = px.line(x=range(1, len(inertias) + 1), y=inertias, markers=True)
 fig_elbow.update_layout(
-    title="Elbow Analysis",
+    title="Elbow Method Analysis",
     xaxis_title='Number of Clusters',
     yaxis_title='Inertia'
 )
