@@ -9,15 +9,17 @@ from datetime import datetime
 st.set_page_config(page_title="Bangkok Airbnb Analysis", layout="wide")
 st.title('Bangkok Airbnb Listings Analysis')
 
+
 # Load and prepare data
 @st.cache_data
 def load_data():
     data = pd.read_csv('airbnb_listings.csv')
-    
+
     # Clean and prepare data
     data['price'] = pd.to_numeric(data['price'], errors='coerce')
     data = data.dropna(subset=['latitude', 'longitude', 'price'])
     return data
+
 
 # Load data
 data = load_data()
@@ -35,16 +37,14 @@ price_range = st.sidebar.slider(
     value=(min_price, max_price)
 )
 
-
 # DBSCAN clustering parameters
 st.sidebar.header('DBSCAN Parameters')
 
 st.sidebar.write("eps (degree)")
 st.sidebar.write("Create a slider for eps here")
-                               
-st.sidebar.write("min_samples")
-st.sidebar.write("Create a slider for min_sample here")                                
 
+st.sidebar.write("min_samples")
+st.sidebar.write("Create a slider for min_sample here")
 
 num_top_clusters = st.sidebar.slider('Number of Top Clusters to Show', 1, 10, 5)
 
@@ -67,9 +67,8 @@ MAP_STYLES = {
 filtered_data = data.copy()
 filtered_data = filtered_data[
     (filtered_data['price'] >= price_range[0]) &
-    (filtered_data['price'] <= price_range[1]) 
-]
-
+    (filtered_data['price'] <= price_range[1])
+    ]
 
 # Main content - Key metrics
 col1, col2, col3, col4 = st.columns(4)
@@ -100,70 +99,115 @@ st.header('Accommodation Hotspot Analysis')
 
 try:
     # Perform DBSCAN clustering
-    coords = filtered_data[['latitude', 'longitude']] 
+    coords = filtered_data[['latitude', 'longitude']]
     eps_degrees = 0.002
     min_samples = 3
     db = DBSCAN(eps=eps_degrees, min_samples=min_samples).fit(coords)
-    
+
     # Add cluster labels to dataframe
     filtered_data['cluster'] = db.labels_
-    
+
     # Analyze clusters
     clusters_count = filtered_data['cluster'].value_counts()
     clusters_count = clusters_count[clusters_count.index != -1]  # Exclude noise points
     top_clusters = clusters_count.head(num_top_clusters)
-    
+
     # Generate colors for clusters
     unique_clusters = filtered_data[filtered_data['cluster'].isin(top_clusters.index)]['cluster'].unique()
     colormap = plt.get_cmap('hsv')
-    cluster_colors = {cluster: [int(x*255) for x in colormap(i/len(unique_clusters))[:3]] + [160] 
-                     for i, cluster in enumerate(unique_clusters)}
-    
+    cluster_colors = {
+        cluster: [int(x * 255) for x in colormap(i / len(unique_clusters))[:3]] + [160] for i, cluster in
+        enumerate(unique_clusters)
+    }
+
     # Create visualization dataframe
     viz_data = filtered_data[filtered_data['cluster'].isin(top_clusters.index)].copy()
     viz_data['color'] = viz_data['cluster'].map(cluster_colors)
-    
-    st.write("Draw a scatter map for clusters here")
-    
+
+    scatterplot_layer = pdk.Layer(
+        "ScatterplotLayer",
+        viz_data,
+        get_fill_color='color',
+        get_position=["longitude", "latitude"],
+        get_radius=50,
+        pickable=True,
+    )
+    view_state = pdk.ViewState(
+        latitude=viz_data['latitude'].mean(),
+        longitude=viz_data['longitude'].mean(),
+        zoom=11,
+    )
+    # Combine the layer and view in a Pydeck Deck
+    render = pdk.Deck(
+        layers=[scatterplot_layer],
+        initial_view_state=view_state,
+        tooltip={"text": "Price: {price}\nRoom Type: {room_type}\nName: {name}"}
+    )
+    # Render the Pydeck visualization
+    st.pydeck_chart(render)
     # Create cluster layer
 
-    
     # Create and display the map
 
-    st.write("Draw a heatmap for clusters here")
-    
-    # Create heatmap layer    
+    # Create heatmap layer
+    heatmap_layer = pdk.Layer(
+        "HeatmapLayer",
+        viz_data,
+        get_position=["longitude", "latitude"],
+        pickable=True,
+        opacity=0.8,
+    )
 
-    
     # Create and display the map
+    view_state = pdk.ViewState(
+        latitude=viz_data['latitude'].mean(),
+        longitude=viz_data['longitude'].mean(),
+        zoom=11,
+    )
+    render = pdk.Deck(
+        layers=[heatmap_layer],
+        initial_view_state=view_state
+    )
+    st.pydeck_chart(render)
 
-    st.write("Draw a hexagon map for clusters here")
-    
+    hexagon_layer = pdk.Layer(
+        "HexagonLayer",
+        viz_data,
+        get_position=["longitude", "latitude"],
+        pickable=True,
+        opacity=0.8,
+    )
+
     # Create hexagon layer    
-
+    view_state = pdk.ViewState(
+        latitude=viz_data['latitude'].mean(),
+        longitude=viz_data['longitude'].mean(),
+        zoom=11,
+    )
+    render = pdk.Deck(
+        layers=[hexagon_layer],
+        initial_view_state=view_state
+    )
+    st.pydeck_chart(render)
 
     # Create and display the map
 
-    
     # Cluster Analysis
     st.subheader('Cluster Statistics')
 
 except Exception as e:
     st.error(f"Error in clustering analysis: {e}")
 
-
-
 # Price by neighborhood
 price_by_neighborhood = filtered_data.groupby('neighbourhood')['price'].agg(['mean', 'count']).reset_index()
 price_by_neighborhood.columns = ['neighbourhood', 'avg_price', 'listings_count']
 
 fig_scatter = px.scatter(price_by_neighborhood,
-                        x='listings_count',
-                        y='avg_price',
-                        text='neighbourhood',
-                        title='Average Price vs Number of Listings by Neighborhood',
-                        labels={'listings_count': 'Number of Listings',
-                               'avg_price': 'Average Price (THB)'})
+                         x='listings_count',
+                         y='avg_price',
+                         text='neighbourhood',
+                         title='Average Price vs Number of Listings by Neighborhood',
+                         labels={'listings_count': 'Number of Listings',
+                                 'avg_price': 'Average Price (THB)'})
 fig_scatter.update_traces(textposition='top center')
 st.plotly_chart(fig_scatter)
-
