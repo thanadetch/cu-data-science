@@ -124,6 +124,7 @@ try:
     viz_data = filtered_data[filtered_data['cluster'].isin(top_clusters.index)].copy()
     viz_data['color'] = viz_data['cluster'].map(cluster_colors)
 
+    ## Create cluster layer
     scatterplot_layer = pdk.Layer(
         "ScatterplotLayer",
         viz_data,
@@ -137,19 +138,15 @@ try:
         longitude=viz_data['longitude'].mean(),
         zoom=11,
     )
-    # Combine the layer and view in a Pydeck Deck
+    # Create and display the map
     render = pdk.Deck(
         layers=[scatterplot_layer],
         initial_view_state=view_state,
         tooltip={"text": "Price: {price}\nRoom Type: {room_type}\nName: {name}"}
     )
-    # Render the Pydeck visualization
     st.pydeck_chart(render)
-    # Create cluster layer
 
-    # Create and display the map
-
-    # Create heatmap layer
+    ## Create heatmap layer
     heatmap_layer = pdk.Layer(
         "HeatmapLayer",
         viz_data,
@@ -170,6 +167,7 @@ try:
     )
     st.pydeck_chart(render)
 
+    ## Create hexagon layer
     hexagon_layer = pdk.Layer(
         "HexagonLayer",
         viz_data,
@@ -178,7 +176,6 @@ try:
         opacity=0.8,
     )
 
-    # Create hexagon layer    
     view_state = pdk.ViewState(
         latitude=viz_data['latitude'].mean(),
         longitude=viz_data['longitude'].mean(),
